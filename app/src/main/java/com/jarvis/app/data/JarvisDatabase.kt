@@ -30,10 +30,37 @@ interface WakeEventDao {
     suspend fun trim()
 }
 
-// Later phases add Lead, Message, ChatTurn entities here and bump the version.
-@Database(entities = [WakeEvent::class], version = 1, exportSchema = false)
+@Entity(tableName = "chat_turns")
+data class ChatTurn(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val timestamp: Long,
+    val fromUser: Boolean,
+    val text: String,
+    /** Longer answer from the brain, spoken only when asked for details. */
+    val detail: String = "",
+    val isError: Boolean = false
+)
+
+@Dao
+interface ChatDao {
+    @Insert
+    suspend fun insert(turn: ChatTurn): Long
+
+    @Query("SELECT * FROM (SELECT * FROM chat_turns ORDER BY timestamp DESC LIMIT 100) ORDER BY timestamp ASC")
+    fun recent(): Flow<List<ChatTurn>>
+
+    @Query("SELECT * FROM chat_turns WHERE isError = 0 ORDER BY timestamp DESC LIMIT :n")
+    suspend fun lastN(n: Int): List<ChatTurn>
+
+    @Query("DELETE FROM chat_turns")
+    suspend fun clear()
+}
+
+// Later phases add Lead and Message entities here and bump the version.
+@Database(entities = [WakeEvent::class, ChatTurn::class], version = 2, exportSchema = false)
 abstract class JarvisDatabase : RoomDatabase() {
     abstract fun wakeEventDao(): WakeEventDao
+    abstract fun chatDao(): ChatDao
 
     companion object {
         @Volatile private var instance: JarvisDatabase? = null

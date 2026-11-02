@@ -3,10 +3,12 @@ package com.jarvis.app
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import com.jarvis.app.conversation.Conversation
 import com.jarvis.app.data.JarvisDatabase
 
 class JarvisApp : Application() {
     val database: JarvisDatabase by lazy { JarvisDatabase.get(this) }
+    val conversation: Conversation by lazy { Conversation(this, database) }
 
     override fun onCreate() {
         super.onCreate()

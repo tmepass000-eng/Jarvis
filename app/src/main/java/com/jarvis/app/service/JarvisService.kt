@@ -20,6 +20,7 @@ import com.jarvis.app.MainActivity
 import com.jarvis.app.R
 import com.jarvis.app.core.JarvisState
 import com.jarvis.app.core.StateHolder
+import com.jarvis.app.conversation.MicHost
 import com.jarvis.app.data.WakeEvent
 import com.jarvis.app.settings.SettingsRepository
 import com.jarvis.app.wakeword.VoskWakeWordEngine
@@ -29,11 +30,10 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /** Foreground service (type microphone) that owns the wake word engine. */
-class JarvisService : LifecycleService() {
+class JarvisService : LifecycleService(), MicHost {
 
     private lateinit var engine: VoskWakeWordEngine
     private lateinit var settings: SettingsRepository
-    private var idleJob: Job? = null
     private var watchdogJob: Job? = null
     private var pausedForCall = false
     private var tone: ToneGenerator? = null
@@ -46,6 +46,15 @@ class JarvisService : LifecycleService() {
         lifecycleScope.launch {
             settings.sensitivity.collect { engine.setSensitivity(it) }
         }
+        conversation.host = this
+    }
+
+    private val conversation get() = (application as JarvisApp).conversation
+
+    // MicHost: hand the mic to speech recognition and take it back.
+    override fun releaseWakeMic() { engine.stop() }
+    override fun resumeWakeMic() {
+        if (!pausedForCall && StateHolder.serviceRunning.value && !engine.isRunning) startEngine()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -102,12 +111,14 @@ class JarvisService : LifecycleService() {
                         audio.mode == AudioManager.MODE_RINGTONE
                 if (inCall && !pausedForCall) {
                     pausedForCall = true
+                    conversation.stopAll()
                     engine.stop()
                     StateHolder.setStatus("Paused during call")
                 } else if (!inCall && pausedForCall) {
                     pausedForCall = false
                     startEngine()
-                } else if (!inCall && !engine.isRunning && !engine.isLoading) {
+                } else if (!inCall && !engine.isRunning && !engine.isLoading &&
+                    StateHolder.state.value == JarvisState.IDLE) {
                     startEngine()
                 }
             }
@@ -115,19 +126,21 @@ class JarvisService : LifecycleService() {
     }
 
     private fun onWakeWord() {
-        tone?.startTone(ToneGenerator.TONE_PROP_ACK, 150)
-        StateHolder.setState(JarvisState.LISTENING)
         val conf = engine.lastConfidence
         lifecycleScope.launch {
             val dao = (application as JarvisApp).database.wakeEventDao()
             dao.insert(WakeEvent(timestamp = System.currentTimeMillis(), confidence = conf))
             dao.trim()
         }
-        bringAppToFront()
-        idleJob?.cancel()
-        idleJob = lifecycleScope.launch {
-            delay(8000) // phase 1: no conversation yet, so drop back to idle
-            StateHolder.setState(JarvisState.IDLE)
+        when (StateHolder.state.value) {
+            JarvisState.SPEAKING -> conversation.bargeIn()
+            JarvisState.IDLE -> {
+                tone?.startTone(ToneGenerator.TONE_PROP_ACK, 150)
+                bringAppToFront()
+                // Let the chime finish before the recognizer opens the mic.
+                lifecycleScope.launch { delay(200); conversation.startListening() }
+            }
+            else -> Unit
         }
     }
 
@@ -186,7 +199,8 @@ class JarvisService : LifecycleService() {
 
     private fun stopEverything() {
         watchdogJob?.cancel()
-        idleJob?.cancel()
+        conversation.host = null
+        conversation.stopAll()
         engine.stop() // releases AudioRecord, so the mic indicator turns off
         StateHolder.setState(JarvisState.IDLE)
         StateHolder.setServiceRunning(false)
@@ -197,6 +211,7 @@ class JarvisService : LifecycleService() {
 
     override fun onDestroy() {
         watchdogJob?.cancel()
+        if (conversation.host === this) conversation.host = null
         engine.release()
         tone?.release()
         StateHolder.setServiceRunning(false)
