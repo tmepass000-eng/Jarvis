@@ -1,3 +1,5 @@
+import java.net.URI
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -74,7 +76,7 @@ val downloadVoskModel by tasks.registering {
     doLast {
         val zip = File(layout.buildDirectory.get().asFile, "vosk-model.zip")
         zip.parentFile.mkdirs()
-        java.net.URI("https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip").toURL()
+        URI("https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip").toURL()
             .openStream().use { input -> zip.outputStream().use { input.copyTo(it) } }
         copy {
             from(zipTree(zip))
