@@ -17,6 +17,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0-phase1"
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
     buildTypes {
@@ -34,10 +35,6 @@ android {
     }
     buildFeatures {
         compose = true
-    }
-    // Vosk model files must stay uncompressed-readable; aapt compresses them, which is fine for StorageService.unpack.
-    androidResources {
-        noCompress += listOf("mdl", "fst", "int", "mat", "conf")
     }
 }
 
