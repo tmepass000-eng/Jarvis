@@ -1,0 +1,23 @@
+package com.jarvis.app.core
+
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+/** Single source of truth for JARVIS state, shared by the service and the UI. */
+object StateHolder {
+    private val _state = MutableStateFlow(JarvisState.IDLE)
+    val state: StateFlow<JarvisState> = _state.asStateFlow()
+
+    /** True while the foreground service is running and the mic is open. */
+    private val _serviceRunning = MutableStateFlow(false)
+    val serviceRunning: StateFlow<Boolean> = _serviceRunning.asStateFlow()
+
+    /** Short human-readable status, e.g. "Loading model…" or an error. */
+    private val _status = MutableStateFlow("Stopped")
+    val status: StateFlow<String> = _status.asStateFlow()
+
+    fun setState(newState: JarvisState) { _state.value = newState }
+    fun setServiceRunning(running: Boolean) { _serviceRunning.value = running }
+    fun setStatus(text: String) { _status.value = text }
+}
