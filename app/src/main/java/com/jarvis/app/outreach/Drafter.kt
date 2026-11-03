@@ -2,6 +2,8 @@ package com.jarvis.app.outreach
 
 import com.jarvis.app.brain.GeminiCall
 import com.jarvis.app.data.Lead
+import com.jarvis.app.data.PortfolioItem
+import org.json.JSONObject
 import com.jarvis.app.settings.SettingsRepository
 
 enum class Offer(val label: String, val brief: String) {
@@ -9,10 +11,13 @@ enum class Offer(val label: String, val brief: String) {
     MONTHLY("Monthly package", "a monthly package of AI-made video ads, a steady flow of fresh creatives every month"),
 }
 
+data class Draft(val text: String, val sample: PortfolioItem?)
+
 /** Writes English outreach drafts. The user always reviews, edits and sends by hand. */
 class Drafter(private val settings: SettingsRepository) {
-    suspend fun draft(lead: Lead, offer: Offer, previous: String? = null): String {
-        val text = GeminiCall.generate(
+    suspend fun draft(lead: Lead, offer: Offer, previous: String? = null, portfolio: List<PortfolioItem> = emptyList()): Draft {
+        val withSamples = portfolio.isNotEmpty()
+        val raw = GeminiCall.generate(
             key = settings.geminiKey.value,
             model = settings.model.value.ifBlank { GeminiCall.GROUNDED_MODEL },
             system = SYSTEM,
@@ -25,11 +30,26 @@ class Drafter(private val settings: SettingsRepository) {
                 appendLine("- What they seem to lack: ${lead.reason}")
                 if (lead.notes.isNotBlank()) appendLine("- User's notes: ${lead.notes.take(500)}")
                 if (previous != null) appendLine("Write a clearly different version from this one:\n$previous")
+                if (withSamples) {
+                    appendLine("Portfolio samples (pick the one that best matches this lead's niche):")
+                    portfolio.forEachIndexed { i, p -> appendLine("$i. ${p.title}: ${p.description.take(150)}") }
+                    appendLine("Return JSON: {\"message\": \"...\", \"sample\": <index of best sample>}. The message should mention that you're sharing one sample, but must not include the link.")
+                }
             },
+            json = withSamples,
             timeoutMs = 25_000
         )
         settings.countRequest()
-        return text.replace("*", "").trim().removeSurrounding("\"")
+        var text = raw
+        var sample: PortfolioItem? = null
+        if (withSamples) {
+            val o = runCatching { JSONObject(raw.trim().removePrefix("```json").removePrefix("```").removeSuffix("```")) }.getOrNull()
+            text = o?.optString("message")?.takeIf { it.isNotBlank() } ?: raw
+            sample = portfolio.getOrNull(o?.optInt("sample", 0) ?: 0) ?: portfolio.first()
+        }
+        text = text.replace("*", "").trim().removeSurrounding("\"")
+        if (sample != null) text += "\n\nSample: ${sample.link}"
+        return Draft(text, sample)
     }
 
     companion object {

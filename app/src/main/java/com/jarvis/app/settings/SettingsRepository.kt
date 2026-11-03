@@ -53,6 +53,25 @@ class SettingsRepository private constructor(context: Context) {
     private val _leadTarget = flow(prefs.getInt(KEY_LEAD_TARGET, 25))
     val leadTarget: StateFlow<Int> = _leadTarget.asStateFlow()
 
+    private val _priceSingle = flow(prefs.getString(KEY_PRICE_SINGLE, "").orEmpty())
+    val priceSingle: StateFlow<String> = _priceSingle.asStateFlow()
+    private val _priceMonthly = flow(prefs.getString(KEY_PRICE_MONTHLY, "").orEmpty())
+    val priceMonthly: StateFlow<String> = _priceMonthly.asStateFlow()
+    private val _briefOn = flow(prefs.getBoolean(KEY_BRIEF_ON, true))
+    val briefOn: StateFlow<Boolean> = _briefOn.asStateFlow()
+    /** Minutes after midnight, local time. Default 8:30 AM. */
+    private val _briefTime = flow(prefs.getInt(KEY_BRIEF_TIME, 8 * 60 + 30))
+    val briefTime: StateFlow<Int> = _briefTime.asStateFlow()
+
+    fun setPriceSingle(v: String) { prefs.edit().putString(KEY_PRICE_SINGLE, v).apply(); _priceSingle.value = v }
+    fun setPriceMonthly(v: String) { prefs.edit().putString(KEY_PRICE_MONTHLY, v).apply(); _priceMonthly.value = v }
+    fun setBriefOn(v: Boolean) { prefs.edit().putBoolean(KEY_BRIEF_ON, v).apply(); _briefOn.value = v }
+    fun setBriefTime(v: Int) { prefs.edit().putInt(KEY_BRIEF_TIME, v).apply(); _briefTime.value = v }
+
+    var briefIdea: String
+        get() = prefs.getString(KEY_BRIEF_IDEA, "").orEmpty()
+        set(v) { prefs.edit().putString(KEY_BRIEF_IDEA, v).apply() }
+
     private val _requestsToday = flow(currentCount())
     val requestsToday: StateFlow<Int> = _requestsToday.asStateFlow()
 
@@ -112,6 +131,11 @@ class SettingsRepository private constructor(context: Context) {
         private const val KEY_RATE = "tts_rate"
         private const val KEY_FOLLOWUP = "follow_up"
         private const val KEY_REQ_DAY = "req_day"
+        private const val KEY_PRICE_SINGLE = "price_single"
+        private const val KEY_PRICE_MONTHLY = "price_monthly"
+        private const val KEY_BRIEF_ON = "brief_on"
+        private const val KEY_BRIEF_TIME = "brief_time"
+        private const val KEY_BRIEF_IDEA = "brief_idea"
         private const val KEY_REQ_COUNT = "req_count"
 
         @Volatile private var instance: SettingsRepository? = null

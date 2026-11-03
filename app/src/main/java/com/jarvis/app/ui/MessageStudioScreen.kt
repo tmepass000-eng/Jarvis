@@ -65,7 +65,7 @@ private const val DAILY_SAFE = 25
 private const val DAY = 24L * 60 * 60 * 1000
 
 @Composable
-fun MessageStudioScreen(leadId: Long, onBack: () -> Unit) {
+fun MessageStudioScreen(leadId: Long, onBack: () -> Unit, onPitch: (Long) -> Unit = {}) {
     val context = LocalContext.current
     val app = context.applicationContext as JarvisApp
     val db = app.database
@@ -81,6 +81,7 @@ fun MessageStudioScreen(leadId: Long, onBack: () -> Unit) {
     var error by remember { mutableStateOf("") }
     var followDays by remember { mutableIntStateOf(3) }
     var warnCount by remember { mutableStateOf<Int?>(null) }
+    var sampleTitle by remember { mutableStateOf<String?>(null) }
     val typing = shown < full.length
 
     fun generate(l: Lead) {
@@ -88,7 +89,9 @@ fun MessageStudioScreen(leadId: Long, onBack: () -> Unit) {
         scope.launch {
             try {
                 val prev = text.takeIf { it.isNotBlank() }
-                full = drafter.draft(l, offer, prev); shown = 0; text = ""
+                val d = drafter.draft(l, offer, prev, db.portfolioDao().list())
+                sampleTitle = d.sample?.title
+                full = d.text; shown = 0; text = ""
             } catch (e: BrainException) { error = e.userMessage }
             busy = false
         }
@@ -126,6 +129,7 @@ fun MessageStudioScreen(leadId: Long, onBack: () -> Unit) {
         Text(l.name, color = JarvisColors.Text, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         Text("${l.platform} · Score ${l.score} · ${l.status}", color = JarvisColors.SoftGold, fontSize = 13.sp)
         Text(l.reason, color = JarvisColors.Muted, fontSize = 13.sp)
+        TextButton(onClick = { onPitch(l.id) }) { Text("Open Pitch Room", color = JarvisColors.SoftGold) }
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Offer.entries.forEach { o ->
@@ -152,6 +156,7 @@ fun MessageStudioScreen(leadId: Long, onBack: () -> Unit) {
             )
             Text("${text.split(Regex("\\s+")).count { it.isNotBlank() }} words · edit freely", color = JarvisColors.Muted, fontSize = 12.sp)
         }
+        if (sampleTitle != null && !typing) Text("Attached sample: $sampleTitle", color = JarvisColors.SoftGold, fontSize = 12.sp)
         if (error.isNotBlank()) Text(error, color = JarvisColors.Danger, fontSize = 13.sp)
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

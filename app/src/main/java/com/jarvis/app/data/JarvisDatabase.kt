@@ -90,7 +90,34 @@ data class Lead(
     val createdAt: Long = System.currentTimeMillis(),
     val contactedAt: Long? = null,
     val followUpAt: Long? = null,
+    /** Pitch Room dossier as JSON, empty until generated. */
+    val pitch: String = "",
 )
+
+/** A sample ad the user made, shown to leads. */
+@Entity(tableName = "portfolio")
+data class PortfolioItem(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val title: String,
+    val link: String,
+    val description: String,
+    val createdAt: Long = System.currentTimeMillis(),
+)
+
+@Dao
+interface PortfolioDao {
+    @Query("SELECT * FROM portfolio ORDER BY createdAt ASC")
+    fun all(): Flow<List<PortfolioItem>>
+
+    @Query("SELECT * FROM portfolio ORDER BY createdAt ASC")
+    suspend fun list(): List<PortfolioItem>
+
+    @Insert
+    suspend fun insert(item: PortfolioItem)
+
+    @androidx.room.Delete
+    suspend fun delete(item: PortfolioItem)
+}
 
 /** One outreach handoff (copy + open profile), for the per-platform daily warning. */
 @Entity(tableName = "outreach")
@@ -136,6 +163,12 @@ interface LeadDao {
     @Query("SELECT * FROM leads WHERE status IN ('Found','Contacted','Replied','Meeting','Won','Lost') ORDER BY starred DESC, score DESC")
     fun pipeline(): Flow<List<Lead>>
 
+    @Query("SELECT * FROM leads WHERE followUpAt IS NOT NULL AND followUpAt <= :until AND status NOT IN ('Won','Lost','Skipped') ORDER BY followUpAt ASC")
+    suspend fun followUpsDue(until: Long): List<Lead>
+
+    @Query("SELECT * FROM leads WHERE status = 'New' AND createdAt >= :since ORDER BY score DESC")
+    suspend fun newSince(since: Long): List<Lead>
+
     @Query("SELECT profileUrl FROM leads")
     suspend fun allUrls(): List<String>
 
@@ -143,12 +176,13 @@ interface LeadDao {
     suspend fun clear()
 }
 
-@Database(entities = [WakeEvent::class, ChatTurn::class, Lead::class, Outreach::class], version = 4, exportSchema = false)
+@Database(entities = [WakeEvent::class, ChatTurn::class, Lead::class, Outreach::class, PortfolioItem::class], version = 5, exportSchema = false)
 abstract class JarvisDatabase : RoomDatabase() {
     abstract fun wakeEventDao(): WakeEventDao
     abstract fun chatDao(): ChatDao
     abstract fun leadDao(): LeadDao
     abstract fun outreachDao(): OutreachDao
+    abstract fun portfolioDao(): PortfolioDao
 
     companion object {
         private val MIGRATION_2_3 = object : Migration(2, 3) {
@@ -166,12 +200,19 @@ abstract class JarvisDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `leads` ADD COLUMN `pitch` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `portfolio` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `link` TEXT NOT NULL, `description` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)")
+            }
+        }
+
         @Volatile private var instance: JarvisDatabase? = null
 
         fun get(context: Context): JarvisDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(context.applicationContext, JarvisDatabase::class.java, "jarvis.db")
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .fallbackToDestructiveMigration()
                     .build().also { instance = it }
             }

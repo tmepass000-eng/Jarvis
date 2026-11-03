@@ -164,6 +164,7 @@ fun SettingsScreen(settings: SettingsRepository, onBack: () -> Unit, onOpenBatte
         }
 
         LeadSettingsCard(settings)
+        BriefSettingsCard(settings)
 
         OfflineVoicesCard(settings) { conversation.playSample() }
 
@@ -364,5 +365,29 @@ private fun LeadSettingsCard(settings: SettingsRepository) {
             valueRange = 5f..50f, steps = 8,
             colors = SliderDefaults.colors(thumbColor = JarvisColors.Saffron, activeTrackColor = JarvisColors.Saffron)
         )
+    }
+}
+
+@Composable
+private fun BriefSettingsCard(settings: SettingsRepository) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val on by settings.briefOn.collectAsStateWithLifecycle()
+    val time by settings.briefTime.collectAsStateWithLifecycle()
+    val label = java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(
+        java.util.Calendar.getInstance().apply { set(java.util.Calendar.HOUR_OF_DAY, time / 60); set(java.util.Calendar.MINUTE, time % 60) }.time)
+    Card("Daily Brief") {
+        Hint("A morning notification with follow-ups due, new leads and one Reel idea.")
+        androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Label("Morning brief")
+            androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+            androidx.compose.material3.Switch(checked = on, onCheckedChange = {
+                settings.setBriefOn(it); com.jarvis.app.brief.DailyBrief.schedule(context)
+            })
+        }
+        TextButton(enabled = on, onClick = {
+            android.app.TimePickerDialog(context, { _, h, m ->
+                settings.setBriefTime(h * 60 + m); com.jarvis.app.brief.DailyBrief.schedule(context)
+            }, time / 60, time % 60, false).show()
+        }) { Text("Time: $label (change)", color = JarvisColors.Saffron) }
     }
 }

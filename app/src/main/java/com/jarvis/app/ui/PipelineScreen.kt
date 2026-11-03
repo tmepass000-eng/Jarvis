@@ -70,7 +70,7 @@ import kotlin.math.roundToInt
 private const val DAY_MS = 24L * 60 * 60 * 1000
 
 @Composable
-fun PipelineScreen(onBack: () -> Unit, onWrite: (Long) -> Unit) {
+fun PipelineScreen(onBack: () -> Unit, onWrite: (Long) -> Unit, onPitch: (Long) -> Unit = {}) {
     val context = LocalContext.current
     val app = context.applicationContext as JarvisApp
     val dao = app.database.leadDao()
@@ -196,6 +196,9 @@ fun PipelineScreen(onBack: () -> Unit, onWrite: (Long) -> Unit) {
                 Row {
                     TextButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(l.profileUrl))) } }) {
                         Text("Profile", color = JarvisColors.SoftGold)
+                    }
+                    TextButton(onClick = { scope.launch { dao.update(l.copy(notes = notes)) }; open = null; onPitch(l.id) }) {
+                        Text("Pitch", color = JarvisColors.SoftGold)
                     }
                     TextButton(onClick = { scope.launch { dao.update(l.copy(notes = notes)) }; open = null }) {
                         Text("Save", color = JarvisColors.Muted)

@@ -81,7 +81,7 @@ import kotlin.math.sin
 private enum class LeadTab(val label: String) { FIND("Find"), RADAR("Radar"), CARDS("Cards") }
 
 @Composable
-fun LeadsScreen(onBack: () -> Unit, onWrite: (Long) -> Unit) {
+fun LeadsScreen(onBack: () -> Unit, onWrite: (Long) -> Unit, onPitch: (Long) -> Unit = {}) {
     val context = LocalContext.current
     val app = context.applicationContext as JarvisApp
     val dao = app.database.leadDao()
@@ -157,6 +157,7 @@ fun LeadsScreen(onBack: () -> Unit, onWrite: (Long) -> Unit) {
             confirmButton = {
                 Column(horizontalAlignment = Alignment.End) {
                     TextButton(onClick = { open = null; onWrite(l.id) }) { Text("Write message", color = JarvisColors.Saffron) }
+                    TextButton(onClick = { open = null; onPitch(l.id) }) { Text("Pitch Room", color = JarvisColors.SoftGold) }
                     TextButton(onClick = {
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(l.profileUrl))) }
                     }) { Text("Open profile", color = JarvisColors.SoftGold) }

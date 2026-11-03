@@ -24,6 +24,11 @@ class JarvisApp : Application() {
                 .apply { description = "Reminds you to follow up with a lead" }
         )
         nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_BRIEF, "Daily Brief", NotificationManager.IMPORTANCE_DEFAULT)
+                .apply { description = "Your morning plan: follow-ups, new leads and a content idea" }
+        )
+        com.jarvis.app.brief.DailyBrief.schedule(this)
+        nm.createNotificationChannel(
             NotificationChannel(CHANNEL_WAKE, "Wake alerts", NotificationManager.IMPORTANCE_HIGH)
                 .apply { description = "Opens JARVIS when you say Jarvis" }
         )
@@ -33,5 +38,6 @@ class JarvisApp : Application() {
         const val CHANNEL_SERVICE = "jarvis_service"
         const val CHANNEL_WAKE = "jarvis_wake"
         const val CHANNEL_FOLLOWUP = "jarvis_followup"
+        const val CHANNEL_BRIEF = "jarvis_brief"
     }
 }
