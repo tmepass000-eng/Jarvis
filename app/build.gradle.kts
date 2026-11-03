@@ -15,8 +15,8 @@ android {
         applicationId = "com.jarvis.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.3.0-phase3"
+        versionCode = 5
+        versionName = "0.4.0-phase4"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
@@ -77,6 +77,7 @@ dependencies {
     implementation("org.apache.commons:commons-compress:1.27.1")
 
     // Room: set up now, used for the wake event log; leads and pipeline come in later phases.
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")

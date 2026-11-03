@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Radar
+import androidx.compose.material.icons.filled.ViewKanban
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Icon
@@ -54,7 +55,7 @@ import com.jarvis.app.data.ChatTurn
 import com.jarvis.app.service.JarvisService
 
 @Composable
-fun MainScreen(onOpenSettings: () -> Unit, onOpenLeads: () -> Unit) {
+fun MainScreen(onOpenSettings: () -> Unit, onOpenLeads: () -> Unit, onOpenPipeline: () -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext as JarvisApp
     val conversation = app.conversation
@@ -92,6 +93,9 @@ fun MainScreen(onOpenSettings: () -> Unit, onOpenLeads: () -> Unit) {
             )
             IconButton(onClick = onOpenLeads) {
                 Icon(Icons.Filled.Radar, contentDescription = "Leads", tint = JarvisColors.SoftGold)
+            }
+            IconButton(onClick = onOpenPipeline) {
+                Icon(Icons.Filled.ViewKanban, contentDescription = "Pipeline", tint = JarvisColors.SoftGold)
             }
             IconButton(onClick = onOpenSettings) {
                 Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = JarvisColors.SoftGold)

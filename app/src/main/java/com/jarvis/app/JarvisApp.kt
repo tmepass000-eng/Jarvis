@@ -20,6 +20,10 @@ class JarvisApp : Application() {
                 .apply { description = "Shows while JARVIS listens for its wake word" }
         )
         nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_FOLLOWUP, "Follow-ups", NotificationManager.IMPORTANCE_DEFAULT)
+                .apply { description = "Reminds you to follow up with a lead" }
+        )
+        nm.createNotificationChannel(
             NotificationChannel(CHANNEL_WAKE, "Wake alerts", NotificationManager.IMPORTANCE_HIGH)
                 .apply { description = "Opens JARVIS when you say Jarvis" }
         )
@@ -28,5 +32,6 @@ class JarvisApp : Application() {
     companion object {
         const val CHANNEL_SERVICE = "jarvis_service"
         const val CHANNEL_WAKE = "jarvis_wake"
+        const val CHANNEL_FOLLOWUP = "jarvis_followup"
     }
 }

@@ -12,13 +12,22 @@ import com.jarvis.app.settings.SettingsRepository
 import com.jarvis.app.ui.BatteryGuideScreen
 import com.jarvis.app.ui.JarvisTheme
 import com.jarvis.app.ui.LeadsScreen
+import com.jarvis.app.ui.MessageStudioScreen
+import com.jarvis.app.ui.PipelineScreen
 import com.jarvis.app.ui.MainScreen
 import com.jarvis.app.ui.PermissionsScreen
 import com.jarvis.app.ui.SettingsScreen
 
-private enum class Screen { PERMISSIONS, BATTERY, MAIN, SETTINGS, LEADS }
+private enum class Screen { PERMISSIONS, BATTERY, MAIN, SETTINGS, LEADS, PIPELINE, STUDIO }
 
 class MainActivity : ComponentActivity() {
+    companion object { const val EXTRA_OPEN = "open" }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        if (intent.getStringExtra(EXTRA_OPEN) != null) { setIntent(intent); recreate() }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val settings = SettingsRepository.get(this)
@@ -33,6 +42,14 @@ class MainActivity : ComponentActivity() {
                         }
                     )
                 }
+                var studioLead by remember { mutableStateOf(0L) }
+                var studioReturn by remember { mutableStateOf(Screen.MAIN) }
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    if (intent?.getStringExtra(EXTRA_OPEN) == "pipeline" && settings.onboardingDone) {
+                        intent.removeExtra(EXTRA_OPEN); screen = Screen.PIPELINE
+                    }
+                }
+                fun write(id: Long, from: Screen) { studioLead = id; studioReturn = from; screen = Screen.STUDIO }
                 when (screen) {
                     Screen.PERMISSIONS -> PermissionsScreen(onDone = {
                         settings.onboardingDone = true
@@ -44,11 +61,20 @@ class MainActivity : ComponentActivity() {
                     })
                     Screen.MAIN -> MainScreen(
                         onOpenSettings = { screen = Screen.SETTINGS },
-                        onOpenLeads = { screen = Screen.LEADS }
+                        onOpenLeads = { screen = Screen.LEADS },
+                        onOpenPipeline = { screen = Screen.PIPELINE }
                     )
                     Screen.LEADS -> {
                         BackHandler { screen = Screen.MAIN }
-                        LeadsScreen(onBack = { screen = Screen.MAIN })
+                        LeadsScreen(onBack = { screen = Screen.MAIN }, onWrite = { write(it, Screen.LEADS) })
+                    }
+                    Screen.PIPELINE -> {
+                        BackHandler { screen = Screen.MAIN }
+                        PipelineScreen(onBack = { screen = Screen.MAIN }, onWrite = { write(it, Screen.PIPELINE) })
+                    }
+                    Screen.STUDIO -> {
+                        BackHandler { screen = studioReturn }
+                        MessageStudioScreen(leadId = studioLead, onBack = { screen = studioReturn })
                     }
                     Screen.SETTINGS -> {
                         BackHandler { screen = Screen.MAIN }
