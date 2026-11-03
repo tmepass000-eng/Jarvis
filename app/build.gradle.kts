@@ -15,8 +15,8 @@ android {
         applicationId = "com.jarvis.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0-phase2a"
+        versionCode = 3
+        versionName = "0.2.1-phase2b"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
@@ -72,6 +72,10 @@ dependencies {
     implementation("com.alphacephei:vosk-android:0.3.47@aar")
     implementation("net.java.dev.jna:jna:5.13.0@aar")
 
+    // Offline TTS (Piper voices). The AAR is fetched by the downloadSherpaAar task / CI, not committed.
+    implementation(files("libs/sherpa-onnx-1.13.8.aar"))
+    implementation("org.apache.commons:commons-compress:1.27.1")
+
     // Room: set up now, used for the wake event log; leads and pipeline come in later phases.
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
@@ -99,3 +103,16 @@ val downloadVoskModel by tasks.registering {
     }
 }
 tasks.named("preBuild") { dependsOn(downloadVoskModel) }
+
+// sherpa-onnx Android library (Apache 2.0), downloaded once.
+val downloadSherpaAar by tasks.registering {
+    val aar = file("libs/sherpa-onnx-1.13.8.aar")
+    outputs.file(aar)
+    onlyIf { !aar.exists() }
+    doLast {
+        aar.parentFile.mkdirs()
+        URI("https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.8/sherpa-onnx-1.13.8.aar").toURL()
+            .openStream().use { input -> aar.outputStream().use { input.copyTo(it) } }
+    }
+}
+tasks.named("preBuild") { dependsOn(downloadSherpaAar) }

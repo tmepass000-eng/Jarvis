@@ -12,6 +12,7 @@ import com.jarvis.app.data.JarvisDatabase
 import com.jarvis.app.settings.SettingsRepository
 import com.jarvis.app.stt.AndroidSttEngine
 import com.jarvis.app.tts.AndroidTtsEngine
+import com.jarvis.app.tts.HybridTts
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -37,7 +38,8 @@ class Conversation(context: Context, private val db: JarvisDatabase) {
     private val settings = SettingsRepository.get(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val stt = AndroidSttEngine(context)
-    val tts = AndroidTtsEngine(context)
+    val androidTts = AndroidTtsEngine(context)
+    private val tts = HybridTts(context, androidTts)
     private val brain = GeminiBrain(
         apiKey = { settings.geminiKey.value },
         model = { settings.model.value },
@@ -52,7 +54,7 @@ class Conversation(context: Context, private val db: JarvisDatabase) {
     init {
         scope.launch {
             combine(settings.language, settings.voice, settings.pitch, settings.rate) { l, v, p, r -> listOf(l, v, p, r) }
-                .collect { (l, v, p, r) -> tts.configure(l as String, v as String?, p as Float, r as Float) }
+                .collect { (l, v, p, r) -> androidTts.configure(l as String, v as String?, p as Float, r as Float) }
         }
     }
 

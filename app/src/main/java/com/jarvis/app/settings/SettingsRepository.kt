@@ -32,6 +32,10 @@ class SettingsRepository private constructor(context: Context) {
     private val _voice = flow(prefs.getString(KEY_VOICE, null))
     val voice: StateFlow<String?> = _voice.asStateFlow()
 
+    private val _piperVoice = flow(prefs.getString(KEY_PIPER, null))
+    /** Id of the offline Piper voice in use, or null for the Android voice. */
+    val piperVoice: StateFlow<String?> = _piperVoice.asStateFlow()
+
     private val _pitch = flow(prefs.getFloat(KEY_PITCH, 0.85f))
     val pitch: StateFlow<Float> = _pitch.asStateFlow()
 
@@ -63,6 +67,7 @@ class SettingsRepository private constructor(context: Context) {
         prefs.edit().putString(KEY_LANG, v).remove(KEY_VOICE).apply(); _language.value = v; _voice.value = null
     }
     fun setVoice(v: String?) { prefs.edit().putString(KEY_VOICE, v).apply(); _voice.value = v }
+    fun setPiperVoice(v: String?) { prefs.edit().putString(KEY_PIPER, v).apply(); _piperVoice.value = v }
     fun setPitch(v: Float) { prefs.edit().putFloat(KEY_PITCH, v).apply(); _pitch.value = v }
     fun setRate(v: Float) { prefs.edit().putFloat(KEY_RATE, v).apply(); _rate.value = v }
     fun setFollowUp(v: Boolean) { prefs.edit().putBoolean(KEY_FOLLOWUP, v).apply(); _followUp.value = v }
@@ -91,6 +96,7 @@ class SettingsRepository private constructor(context: Context) {
         private const val KEY_MODEL = "gemini_model"
         private const val KEY_LANG = "speech_lang"
         private const val KEY_VOICE = "tts_voice"
+        private const val KEY_PIPER = "piper_voice"
         private const val KEY_PITCH = "tts_pitch"
         private const val KEY_RATE = "tts_rate"
         private const val KEY_FOLLOWUP = "follow_up"

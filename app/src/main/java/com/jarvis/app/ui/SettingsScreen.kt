@@ -58,6 +58,7 @@ import com.jarvis.app.JarvisApp
 import com.jarvis.app.brain.GeminiBrain
 import com.jarvis.app.core.BrainException
 import com.jarvis.app.settings.SettingsRepository
+import com.jarvis.app.tts.PiperVoices
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -87,7 +88,7 @@ fun SettingsScreen(settings: SettingsRepository, onBack: () -> Unit, onOpenBatte
     var modelDraft by remember { mutableStateOf(model) }
     var voices by remember { mutableStateOf<List<Voice>>(emptyList()) }
 
-    LaunchedEffect(language) { conversation.tts.voicesFor(language) { voices = it.take(15) } }
+    LaunchedEffect(language) { conversation.androidTts.voicesFor(language) { voices = it.take(15) } }
     LaunchedEffect(Unit) { settings.refreshCount() }
 
     Column(
@@ -162,8 +163,10 @@ fun SettingsScreen(settings: SettingsRepository, onBack: () -> Unit, onOpenBatte
             Hint("Requests today: $requests. Flash-Lite allows about 500 a day free, Flash about 20. Resets 1:30 PM India time.")
         }
 
+        OfflineVoicesCard(settings) { conversation.playSample() }
+
         // ---- Voice ----
-        Card("Voice") {
+        Card("Android voice (backup)") {
             Label("Language you speak")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Chip("English (India)", language == "en-IN") { settings.setLanguage("en-IN") }
@@ -196,7 +199,6 @@ fun SettingsScreen(settings: SettingsRepository, onBack: () -> Unit, onOpenBatte
                 onClick = { conversation.playSample() },
                 colors = ButtonDefaults.buttonColors(containerColor = JarvisColors.Saffron, contentColor = JarvisColors.Charcoal)
             ) { Text("▶  Play sample") }
-            Hint("Offline studio voices (deep male, calm male, female) arrive in the next update.")
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("Keep listening after reply", color = JarvisColors.Text)
@@ -276,3 +278,66 @@ private fun fieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTextColor = JarvisColors.Text, unfocusedTextColor = JarvisColors.Text,
     focusedLabelColor = JarvisColors.SoftGold, unfocusedLabelColor = JarvisColors.Muted, cursorColor = JarvisColors.Saffron
 )
+
+@Composable
+private fun OfflineVoicesCard(settings: SettingsRepository, playSample: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val selected by settings.piperVoice.collectAsStateWithLifecycle()
+    var progress by remember { mutableStateOf<Map<String, Float>>(emptyMap()) }
+    var errors by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var refresh by remember { mutableStateOf(0) }
+
+    Card("Offline studio voices") {
+        Hint("Download once (Wi-Fi best), then they work without internet. Speed slider below applies.")
+        Text(
+            (if (selected == null) "● " else "○ ") + "Android voice (no download)",
+            color = if (selected == null) JarvisColors.SoftGold else JarvisColors.Text,
+            modifier = Modifier.fillMaxWidth().clickable { settings.setPiperVoice(null) }.padding(vertical = 6.dp)
+        )
+        PiperVoices.ALL.forEach { v ->
+            @Suppress("UNUSED_EXPRESSION") refresh
+            val installed = PiperVoices.isInstalled(context, v)
+            val p = progress[v.id]
+            Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f).clickable(enabled = installed) { settings.setPiperVoice(v.id) }) {
+                        Text(
+                            (if (selected == v.id) "● " else "○ ") + v.title,
+                            color = if (selected == v.id) JarvisColors.SoftGold else JarvisColors.Text,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text("${v.description} · ${v.sizeMb} MB · ${v.license}", color = JarvisColors.Muted, fontSize = 12.sp)
+                    }
+                    when {
+                        p != null && p < 1f -> Text("${(p * 100).toInt()}%", color = JarvisColors.SoftGold)
+                        installed -> Row {
+                            if (selected == v.id) TextButton(onClick = playSample) { Text("▶", color = JarvisColors.Saffron) }
+                            else TextButton(onClick = { settings.setPiperVoice(v.id) }) { Text("Use", color = JarvisColors.Saffron) }
+                            TextButton(onClick = {
+                                if (selected == v.id) settings.setPiperVoice(null)
+                                PiperVoices.delete(context, v); refresh++
+                            }) { Text("✕", color = JarvisColors.Muted) }
+                        }
+                        else -> TextButton(onClick = {
+                            progress = progress + (v.id to 0f)
+                            errors = errors - v.id
+                            scope.launch {
+                                try {
+                                    PiperVoices.download(context, v) { progress = progress + (v.id to it) }
+                                    settings.setPiperVoice(v.id)
+                                } catch (e: Exception) {
+                                    errors = errors + (v.id to "Download failed. Check internet and try again.")
+                                }
+                                progress = progress - v.id
+                                refresh++
+                            }
+                        }) { Text("Download", color = JarvisColors.Saffron) }
+                    }
+                }
+                errors[v.id]?.let { Text(it, color = JarvisColors.Danger, fontSize = 12.sp) }
+            }
+        }
+        Hint("Hindi voice reads Devanagari text, so set language to Hindi when using it.")
+    }
+}
