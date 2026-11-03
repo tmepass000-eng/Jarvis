@@ -5,10 +5,12 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import com.jarvis.app.conversation.Conversation
 import com.jarvis.app.data.JarvisDatabase
+import com.jarvis.app.leads.LeadFinder
 
 class JarvisApp : Application() {
     val database: JarvisDatabase by lazy { JarvisDatabase.get(this) }
-    val conversation: Conversation by lazy { Conversation(this, database) }
+    val leadFinder: LeadFinder by lazy { LeadFinder(this, database) }
+    val conversation: Conversation by lazy { Conversation(this, database, leadFinder) }
 
     override fun onCreate() {
         super.onCreate()

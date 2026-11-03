@@ -11,11 +11,12 @@ import androidx.compose.runtime.setValue
 import com.jarvis.app.settings.SettingsRepository
 import com.jarvis.app.ui.BatteryGuideScreen
 import com.jarvis.app.ui.JarvisTheme
+import com.jarvis.app.ui.LeadsScreen
 import com.jarvis.app.ui.MainScreen
 import com.jarvis.app.ui.PermissionsScreen
 import com.jarvis.app.ui.SettingsScreen
 
-private enum class Screen { PERMISSIONS, BATTERY, MAIN, SETTINGS }
+private enum class Screen { PERMISSIONS, BATTERY, MAIN, SETTINGS, LEADS }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,7 +42,14 @@ class MainActivity : ComponentActivity() {
                         settings.batteryGuideShown = true
                         screen = Screen.MAIN
                     })
-                    Screen.MAIN -> MainScreen(onOpenSettings = { screen = Screen.SETTINGS })
+                    Screen.MAIN -> MainScreen(
+                        onOpenSettings = { screen = Screen.SETTINGS },
+                        onOpenLeads = { screen = Screen.LEADS }
+                    )
+                    Screen.LEADS -> {
+                        BackHandler { screen = Screen.MAIN }
+                        LeadsScreen(onBack = { screen = Screen.MAIN })
+                    }
                     Screen.SETTINGS -> {
                         BackHandler { screen = Screen.MAIN }
                         SettingsScreen(

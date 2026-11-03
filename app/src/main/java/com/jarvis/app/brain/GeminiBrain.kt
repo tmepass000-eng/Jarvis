@@ -125,7 +125,7 @@ class GeminiBrain(
     private fun explain(code: Int, body: String): String {
         val msg = runCatching { JSONObject(body).optJSONObject("error")?.optString("message") }.getOrNull().orEmpty()
         return when {
-            code == 429 -> "Gemini's free limit is used up for now. It resets daily at 1:30 PM India time."
+            code == 429 -> "Gemini's free limit is used up for now. It resets at midnight US Pacific time (1:30 PM India time in winter, 12:30 PM in summer)."
             code == 400 && msg.contains("API key", true) -> "Your Gemini key isn't valid. Please check it in Settings."
             code == 401 || code == 403 -> "Gemini refused the key. Please check it in Settings."
             code == 404 -> "That Gemini model name wasn't found. Pick another model in Settings."

@@ -46,6 +46,13 @@ class SettingsRepository private constructor(context: Context) {
     /** Keep listening for a reply after JARVIS speaks. */
     val followUp: StateFlow<Boolean> = _followUp.asStateFlow()
 
+    private val _tavilyKey = flow(prefs.getString(KEY_TAVILY, "").orEmpty())
+    /** Optional Tavily key (1,000 free searches a month). Without it, Gemini's built-in Google Search is used. */
+    val tavilyKey: StateFlow<String> = _tavilyKey.asStateFlow()
+
+    private val _leadTarget = flow(prefs.getInt(KEY_LEAD_TARGET, 25))
+    val leadTarget: StateFlow<Int> = _leadTarget.asStateFlow()
+
     private val _requestsToday = flow(currentCount())
     val requestsToday: StateFlow<Int> = _requestsToday.asStateFlow()
 
@@ -67,6 +74,8 @@ class SettingsRepository private constructor(context: Context) {
         prefs.edit().putString(KEY_LANG, v).remove(KEY_VOICE).apply(); _language.value = v; _voice.value = null
     }
     fun setVoice(v: String?) { prefs.edit().putString(KEY_VOICE, v).apply(); _voice.value = v }
+    fun setTavilyKey(v: String) { prefs.edit().putString(KEY_TAVILY, v.trim()).apply(); _tavilyKey.value = v.trim() }
+    fun setLeadTarget(v: Int) { prefs.edit().putInt(KEY_LEAD_TARGET, v).apply(); _leadTarget.value = v }
     fun setPiperVoice(v: String?) { prefs.edit().putString(KEY_PIPER, v).apply(); _piperVoice.value = v }
     fun setPitch(v: Float) { prefs.edit().putFloat(KEY_PITCH, v).apply(); _pitch.value = v }
     fun setRate(v: Float) { prefs.edit().putFloat(KEY_RATE, v).apply(); _rate.value = v }
@@ -97,6 +106,8 @@ class SettingsRepository private constructor(context: Context) {
         private const val KEY_LANG = "speech_lang"
         private const val KEY_VOICE = "tts_voice"
         private const val KEY_PIPER = "piper_voice"
+        private const val KEY_TAVILY = "tavily_key"
+        private const val KEY_LEAD_TARGET = "lead_target"
         private const val KEY_PITCH = "tts_pitch"
         private const val KEY_RATE = "tts_rate"
         private const val KEY_FOLLOWUP = "follow_up"

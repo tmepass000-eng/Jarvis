@@ -9,6 +9,7 @@ import com.jarvis.app.core.StateHolder
 import com.jarvis.app.core.SttCallback
 import com.jarvis.app.data.ChatTurn
 import com.jarvis.app.data.JarvisDatabase
+import com.jarvis.app.leads.LeadFinder
 import com.jarvis.app.settings.SettingsRepository
 import com.jarvis.app.stt.AndroidSttEngine
 import com.jarvis.app.tts.AndroidTtsEngine
@@ -33,7 +34,7 @@ interface MicHost {
  * Runs one voice turn: LISTENING -> THINKING -> SPEAKING, then optionally listens for a follow-up.
  * Lives for the whole app so the UI (typed messages) and the service (wake word) share it.
  */
-class Conversation(context: Context, private val db: JarvisDatabase) {
+class Conversation(context: Context, private val db: JarvisDatabase, private val leadFinder: LeadFinder) {
 
     private val settings = SettingsRepository.get(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -125,6 +126,18 @@ class Conversation(context: Context, private val db: JarvisDatabase) {
                 speak(d, myTurn, byVoice)
                 return@launch
             }
+            FIND.find(text.trim())?.let { m ->
+                val words = m.groupValues[2].trim().trimEnd('.', '?', '!')
+                    .replace(Regex("^(me|some)\\s+", RegexOption.IGNORE_CASE), "")
+                val parts = words.split(Regex("\\s+(in|from)\\s+", RegexOption.IGNORE_CASE))
+                val niche = parts.first()
+                val region = if (parts.size > 1) parts.last() else "India"
+                val msg = try { leadFinder.find(niche, region).message + " Open Leads to swipe them." }
+                    catch (e: BrainException) { e.userMessage }
+                dao.insert(ChatTurn(timestamp = System.currentTimeMillis(), fromUser = false, text = msg))
+                if (myTurn == turn) speak(msg, myTurn, allowFollowUp = false)
+                return@launch
+            }
             try {
                 settings.countRequest()
                 var spokenStarted = false
@@ -170,6 +183,7 @@ class Conversation(context: Context, private val db: JarvisDatabase) {
     }
 
     companion object {
+        private val FIND = Regex("^(?:jarvis[, ]+)?(find|search for|look for|dhundo|dhoondo)\\s+(.{3,})$", RegexOption.IGNORE_CASE)
         private val DETAILS = Regex("\\b(details?|explain|elaborate|vistar|samjhao|samjha|aur batao)\\b", RegexOption.IGNORE_CASE)
         const val SAMPLE = "Hello, I am JARVIS. Ready when you are."
     }

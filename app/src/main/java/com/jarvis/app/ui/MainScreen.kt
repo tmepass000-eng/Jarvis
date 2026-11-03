@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Icon
@@ -53,7 +54,7 @@ import com.jarvis.app.data.ChatTurn
 import com.jarvis.app.service.JarvisService
 
 @Composable
-fun MainScreen(onOpenSettings: () -> Unit) {
+fun MainScreen(onOpenSettings: () -> Unit, onOpenLeads: () -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext as JarvisApp
     val conversation = app.conversation
@@ -89,6 +90,9 @@ fun MainScreen(onOpenSettings: () -> Unit) {
                     uncheckedTrackColor = JarvisColors.Charcoal
                 )
             )
+            IconButton(onClick = onOpenLeads) {
+                Icon(Icons.Filled.Radar, contentDescription = "Leads", tint = JarvisColors.SoftGold)
+            }
             IconButton(onClick = onOpenSettings) {
                 Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = JarvisColors.SoftGold)
             }

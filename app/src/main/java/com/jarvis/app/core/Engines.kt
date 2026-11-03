@@ -47,5 +47,10 @@ interface TtsEngine {
     fun release()
 }
 
-/** Free-tier web search for lead finding. Implemented in phase 3. */
-interface WebSearch
+data class SearchResult(val title: String, val url: String, val snippet: String)
+
+/** Free-tier web search for lead finding. Max 5 results, 8 s timeout, never throws: returns empty on failure. */
+interface WebSearch {
+    val name: String
+    suspend fun search(query: String, max: Int = 5): List<SearchResult>
+}

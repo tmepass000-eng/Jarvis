@@ -160,8 +160,10 @@ fun SettingsScreen(settings: SettingsRepository, onBack: () -> Unit, onOpenBatte
                     TextButton(onClick = { settings.setModel(modelDraft) }) { Text("Use", color = JarvisColors.Saffron) }
                 }
             )
-            Hint("Requests today: $requests. Flash-Lite allows about 500 a day free, Flash about 20. Resets 1:30 PM India time.")
+            Hint("Requests today: $requests. Flash-Lite allows about 500 a day free, Flash about 20. Resets at midnight US Pacific (1:30 PM India time in winter, 12:30 PM in summer).")
         }
+
+        LeadSettingsCard(settings)
 
         OfflineVoicesCard(settings) { conversation.playSample() }
 
@@ -339,5 +341,28 @@ private fun OfflineVoicesCard(settings: SettingsRepository, playSample: () -> Un
             }
         }
         Hint("Hindi voice reads Devanagari text, so set language to Hindi when using it.")
+    }
+}
+
+@Composable
+private fun LeadSettingsCard(settings: SettingsRepository) {
+    val tavily by settings.tavilyKey.collectAsStateWithLifecycle()
+    val target by settings.leadTarget.collectAsStateWithLifecycle()
+    var draft by remember { mutableStateOf(tavily) }
+    Card("Lead finding") {
+        Hint("Search works with just your Gemini key (Google Search, about 500 free a day). Optional: add a free Tavily key from app.tavily.com for 1,000 more searches a month.")
+        OutlinedTextField(
+            value = draft, onValueChange = { draft = it },
+            label = { Text("Tavily API key (optional)") }, singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth(), colors = fieldColors(),
+            trailingIcon = { TextButton(onClick = { settings.setTavilyKey(draft) }) { Text("Save", color = JarvisColors.Saffron) } }
+        )
+        Label("Daily lead target: $target")
+        Slider(
+            value = target.toFloat(), onValueChange = { settings.setLeadTarget(it.toInt()) },
+            valueRange = 5f..50f, steps = 8,
+            colors = SliderDefaults.colors(thumbColor = JarvisColors.Saffron, activeTrackColor = JarvisColors.Saffron)
+        )
     }
 }
